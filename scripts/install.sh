@@ -10,7 +10,8 @@ if [ -e "$target" ] || [ -L "$target" ]; then exec "$target" version --json; fi
 command -v curl >/dev/null 2>&1 || { echo 'curl is required' >&2; exit 1; }
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 60 --max-filesize 65536 "https://www.okuptime.com/api/v1/cli/releases/latest?platform=$platform&architecture=$architecture" -o "$work/metadata"
+status=$(curl --fail --silent --show-error --write-out '%{http_code}' --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 60 --max-filesize 65536 "https://www.okuptime.com/api/v1/cli/releases/latest?platform=$platform&architecture=$architecture" -o "$work/metadata")
+[ "$status" = 200 ] || fail "Metadata HTTP $status; redirects are refused"
 # Extract only the release API's flat scalar fields. Reject missing/duplicate fields.
 field() {
   value=$(tr ',' '\n' < "$work/metadata" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p")
@@ -28,7 +29,8 @@ printf '%s\n' "$checksum" | LC_ALL=C grep -Eq '^[0-9a-f]{64}$' || fail 'Invalid 
 printf '%s\n' "$version" | LC_ALL=C grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || fail 'Invalid release version'
 printf '%s\n' "$url" | LC_ALL=C grep -Eq '^https://www\.okuptime\.com/cli/releases/[A-Za-z0-9._/-]+$' || fail 'Invalid official download URL'
 case "$url" in */../*|*/./*) echo 'Invalid download path' >&2; exit 1;; esac
-curl --fail --silent --show-error --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 --max-filesize "$size" "$url" -o "$work/okuptime"
+status=$(curl --fail --silent --show-error --write-out '%{http_code}' --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 --max-filesize "$size" "$url" -o "$work/okuptime")
+[ "$status" = 200 ] || fail "Download HTTP $status; redirects are refused"
 [ "$(wc -c < "$work/okuptime" | tr -d ' ')" = "$size" ] || fail 'Size mismatch'
 if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$work/okuptime" | cut -d ' ' -f 1); else actual=$(shasum -a 256 "$work/okuptime" | cut -d ' ' -f 1); fi
 [ "$actual" = "$checksum" ] || { echo 'Checksum mismatch; installation stopped' >&2; exit 1; }

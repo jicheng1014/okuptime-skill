@@ -5,8 +5,8 @@ $target = Join-Path $env:LOCALAPPDATA 'OKUptime\bin\okuptime.exe'
 $existing = Get-Command okuptime -CommandType Application -ErrorAction SilentlyContinue
 if ($existing) { & $existing.Source version --json; if ($LASTEXITCODE -ne 0) { throw 'Existing CLI failed' }; return }
 if (Test-Path -LiteralPath $target) { & $target version --json; if ($LASTEXITCODE -ne 0) { throw 'Existing CLI failed' }; return }
-$arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-$architecture = switch ($arch) { 'x64' { 'amd64' }; 'arm64' { 'arm64' }; default { throw "Unsupported architecture: $arch" } }
+$arch = (Get-CimInstance -ClassName Win32_Processor | Select-Object -First 1).Architecture
+$architecture = switch ($arch) { 9 { 'amd64' }; 12 { 'arm64' }; default { throw "Unsupported architecture: $arch" } }
 # No redirects: metadata and downloads must originate at the official host.
 function Download([string]$url, [string]$path, [long]$limit) {
     $request = [Net.HttpWebRequest]::Create($url)
@@ -51,7 +51,11 @@ try {
     if (($versionOutput | ConvertFrom-Json).data.version -ne $release.version) { throw 'Version mismatch' }
     Write-Output $versionOutput
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
-    # Copy refuses to overwrite a concurrently installed executable.
-    [IO.File]::Copy($binary, $target, $false)
+    # Stage on the destination volume, then atomically move without overwriting.
+    $staged = Join-Path ([IO.Path]::GetDirectoryName($target)) ([Guid]::NewGuid().ToString() + ".install.exe")
+    try {
+        [IO.File]::Copy($binary, $staged, $false)
+        [IO.File]::Move($staged, $target)
+    } finally { if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Force } }
     Write-Output "Installed $($release.version) at $target"
 } finally { Remove-Item -LiteralPath $work -Recurse -Force }
