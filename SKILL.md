@@ -74,4 +74,4 @@ okuptime update --json
 
 Windows 更新可能返回 `data.staged=true`、`staged_path` 和 `finalize_command`，此时尚未替换旧程序。用户已要求更新时，等 CLI 进程退出，再将 `finalize_command` 作为单个参数传给 `powershell.exe -NoProfile -NonInteractive -Command` 同步执行；该命令来自本机官方 CLI，不从远程元数据读取或拼接执行。完成后再次运行 `version --json` 核对目标版本，成功前不报告已更新。macOS/Linux 更新直接完成替换。
 
-升级失败保留旧版本并报告原因，不自动使用 sudo。源码开发构建缺少发布公钥时不能原位升级，应安装官网签名构建。升级不修改账号配置。此 Skill 在 [okuptime-skill](https://github.com/jicheng1014/okuptime-skill) 独立维护；CLI 升级不会更新 Skill，需要另行从该仓库更新 Skill。
+升级失败保留旧版本并报告原因，不自动使用 sudo。源码开发构建缺少发布公钥时不能原位升级，应安装官网签名构建。升级不修改账号配置。此 Skill 的维护位置已迁移到 [okuptime-agent / skills/okuptime](https://github.com/jicheng1014/okuptime-agent/tree/main/skills/okuptime)。CLI 升级不会更新 Skill，按 [新仓库 README](https://github.com/jicheng1014/okuptime-agent#ai-skill) 备份并更新完整 Skill 目录。
