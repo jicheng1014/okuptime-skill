@@ -38,7 +38,7 @@ CLI 隐藏读取并保存凭证。不要将 Token 发到聊天、写入命令参
 
 ## 发布状态与更新
 
-官网新版 CLI 发布接口、预编译包和创建项目接口尚未部署；依赖这些能力的首次自动安装、在线升级和创建项目，需要完成官网发布后才能使用。Skill 公开发布不代表这些网站功能已上线。
+官网提供 macOS 与 Linux 的 amd64、arm64 预编译 CLI 包。Skill 根据官网发布清单安装；首次配置账号后即可管理网站监控。通过 `okuptime update --check` 检查版本，主动运行 `okuptime update` 安装新版，保留账号配置和旧二进制。Windows 暂不支持原位更新。
 
 Skill 与 CLI 独立维护。CLI 升级不会更新 Skill，Skill 更新也不会自动安装或升级 CLI；更新 Skill 时从本仓库获取最新的 `SKILL.md`。
 
