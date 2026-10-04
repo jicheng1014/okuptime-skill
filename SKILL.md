@@ -9,16 +9,23 @@ description: 通过 OK Uptime CLI 将网站加入账号的监控项目，查询�
 
 ## 安装与账号
 
-先查找 `okuptime`，也检查 `~/.local/bin/okuptime`；后者存在但不在 PATH 时直接使用绝对路径。不要读取或输出已保存的 Token。
+用户要求使用 OK Uptime 管理网站时，先检查 CLI，未安装则直接运行本 Skill 附带的安装器；首次安装是完成本次任务的准备步骤，无需让用户自行下载、编译或修改 PATH。已有 CLI 不自动升级，不覆盖其他文件。
 
-没有 CLI 时，从官网安装预编译二进制，无需 Go：
+按当前执行环境选择安装器（WSL 使用 Linux 安装器）：
 
-1. 确定本机平台和架构：macOS 对应 `darwin`，Linux 对应 `linux`；x86_64 对应 `amd64`，aarch64/Apple Silicon 对应 `arm64`。
-2. 请求 `https://www.okuptime.com/api/v1/cli/releases/latest?platform=PLATFORM&architecture=ARCH`，读取 `data` 中的 `url`、`size`、`sha256`、`version`。
-3. 只接受同官网主机的 HTTPS 下载地址，拒绝跳转；先下载到临时文件，限制 64 MiB，核对实际大小与 SHA256，全部吻合后安装到 `~/.local/bin/okuptime`，权限 `0755`。使用现有下载和校验工具，不使用 `curl | sh`，不覆盖已有可执行文件。
-4. 运行绝对路径的 `okuptime version --json` 确认版本。官网无发布、平台不支持或校验失败时停止安装，明确报告原因。
+| 系统 | 安装命令（路径相对于本 Skill 目录） | 安装位置 |
+| --- | --- | --- |
+| macOS | `sh scripts/install.sh` | `~/.local/bin/okuptime` |
+| Linux | `sh scripts/install.sh` | `~/.local/bin/okuptime` |
+| Windows | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1` | `%LOCALAPPDATA%\OKUptime\bin\okuptime.exe` |
 
-首次安装通过官网 HTTPS 和发布校验值建立信任；后续 `okuptime update` 还会用二进制内置公钥验证发布签名。
+实际执行时使用安装器的绝对路径，不能假设当前目录是 Skill 目录。Windows 的 ExecutionPolicy 参数只作用于本次进程，不更改系统策略。macOS/Linux 需要 curl 和系统 SHA256 工具；Windows 使用自带 PowerShell，不需要 Python、Ruby 或 Go。支持 amd64 和 arm64；不支持的平台或官网无发布包时停止并报告原因，不擅自改为源码编译。
+
+先查找 PATH 中的 `okuptime`；再检查表中的用户目录。安装后用可执行文件绝对路径运行所有命令，无需更改 PATH。PowerShell 调用带空格的路径使用 `&`，例如 `& "$env:LOCALAPPDATA\OKUptime\bin\okuptime.exe" version --json`。
+
+安装器从官网 HTTPS 元数据接口读取最新版本，拒绝重定向与非官方地址，限制下载大小并校验平台、大小和 SHA256；检查下载的二进制能运行后才安装。首次安装通过官网 HTTPS 和发布校验值建立信任；后续 CLI 更新还会验证内置公钥的发布签名。安装失败报告真实原因，不自动使用 sudo、管理员权限或绕过校验。
+
+不要读取或输出已保存的 Token。
 
 首次授权需用户在 [OK Uptime](https://www.okuptime.com) 的“个人资料 → API 访问令牌”创建 Token，并在本机执行 `okuptime config set-token`。该命令隐藏读取并保存凭证。不要要求用户把 Token 发到聊天中，不放进命令参数、日志、Skill 或仓库。自动化环境已有 `OKUPTIME_TOKEN` 时直接复用。
 
@@ -64,5 +71,7 @@ okuptime update --json
 ```
 
 发现新版先提示可更新及版本号；只有用户要求安装或更新 CLI 时执行 `update`。普通业务命令的新版提示在 stderr，stdout 仍是 JSON。版本检查无需 Token，检查失败不能阻断网站操作。
+
+Windows 更新可能返回 `data.staged=true`、`staged_path` 和 `finalize_command`，此时尚未替换旧程序。用户已要求更新时，等 CLI 进程退出，再将 `finalize_command` 作为单个参数传给 `powershell.exe -NoProfile -NonInteractive -Command` 同步执行；该命令来自本机官方 CLI，不从远程元数据读取或拼接执行。完成后再次运行 `version --json` 核对目标版本，成功前不报告已更新。macOS/Linux 更新直接完成替换。
 
 升级失败保留旧版本并报告原因，不自动使用 sudo。源码开发构建缺少发布公钥时不能原位升级，应安装官网签名构建。升级不修改账号配置。此 Skill 在 [okuptime-skill](https://github.com/jicheng1014/okuptime-skill) 独立维护；CLI 升级不会更新 Skill，需要另行从该仓库更新 Skill。
